@@ -11,7 +11,7 @@ class UnixDateTImeField(models.DateTimeField):
 class User(models.Model):
     uid = models.CharField(max_length=1024,primary_key=True)
     email = models.CharField(max_length=100)
-    created_at = models.DateTimeField(auto_now=False)
+    created_at = models.DateTimeField(auto_now_add=True,auto_now=False)
     
 class Auth(models.Model):
     token = models.CharField(max_length=10240,primary_key=True)
@@ -26,3 +26,9 @@ class Note(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+class Client(models.Model):
+    client_id = models.CharField(32,primary_key=True)
+    uid = models.CharField(max_length=1024)
+    device = models.CharField(32)
+    created_at = models.DateTimeField(auto_now_add=True)

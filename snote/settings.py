@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-+1n&_rre5n^df%803e5ub9zap=hpd!uuvv5!khctuw@$lhc62+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # 'django.contrib.sessions',
     # 'django.contrib.messages',
     # 'django.contrib.staticfiles',
+    'daphne',
     'corsheaders',
     'core',
 ]
@@ -154,3 +155,30 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+ASGI_APPLICATION = "snote.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [f"redis://{os.getenv('REDIS_HOST')}:6379/1"],
+        },
+    },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND":"django_redis.cache.RedisCache",
+        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/0",
+        "OPTIONS":{
+            "CLIENT_CLASS":"django_redis.client.DefaultClient"
+        }
+    },
+    "redis_db": {
+        "BACKEND":"django_redis.cache.RedisCache",
+        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/2",
+        "OPTIONS":{
+            "CLIENT_CLASS":"django_redis.client.DefaultClient"
+        }
+    }
+}

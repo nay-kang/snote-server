@@ -1,7 +1,8 @@
-from core.models import Note
+from core.models import Note,Client
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from core.serializers import NoteSerializer
+from rest_framework.request import Request
 
 class NoteView(APIView):
     # permission_classes = []
@@ -17,3 +18,10 @@ class NoteView(APIView):
         note,_ = Note.objects.update_or_create(id=pk,defaults=data)
         note.save()
         return Response(NoteSerializer(note).data)
+
+class ClientView(APIView):
+    
+    def put(self,request:Request,pk,format=None):
+        Client.objects.get_or_create(client_id=pk,uid=request.uid)
+        client_count = Client.objects.filter(uid=request.uid).count()
+        return Response({'client_count':client_count})

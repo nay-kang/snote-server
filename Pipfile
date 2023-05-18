@@ -10,6 +10,10 @@ psycopg2 = "*"
 firebase-admin = "*"
 djangorestframework = "*"
 django-cors-headers = "*"
+channels = {extras = ["daphne"], version = "*"}
+channels-redis = "*"
+django-channels2-jsonrpc = "*"
+django-redis = "*"
 
 [dev-packages]
 
