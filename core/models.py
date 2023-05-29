@@ -30,5 +30,7 @@ class Note(models.Model):
 class Client(models.Model):
     client_id = models.CharField(32,primary_key=True)
     uid = models.CharField(max_length=1024)
-    device = models.CharField(32)
+    client_type = models.CharField(max_length=32) # only web,app
+    client_version = models.IntegerField() # eg 0.0.1 is 000001, web version always 000000
+    os = models.CharField(32)
     created_at = models.DateTimeField(auto_now_add=True)
