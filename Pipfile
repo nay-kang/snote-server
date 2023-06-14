@@ -14,6 +14,7 @@ channels = {extras = ["daphne"], version = "*"}
 channels-redis = "*"
 django-channels2-jsonrpc = "*"
 django-redis = "*"
+ua-parser = "*"
 
 [dev-packages]
 
