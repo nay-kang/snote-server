@@ -1,6 +1,7 @@
 from core.models import Note,Client
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import status
 from core.serializers import NoteSerializer
 from rest_framework.request import Request
 from core.user_agent import parse,version_to_number
@@ -19,6 +20,10 @@ class NoteView(APIView):
         note,_ = Note.objects.update_or_create(id=pk,defaults=data)
         note.save()
         return Response(NoteSerializer(note).data)
+    
+    def delete(self,request,pk):
+        Note.objects.filter(id=pk).delete()
+        return Response(status=status.HTTP_200_OK)
 
 class ClientView(APIView):
     
