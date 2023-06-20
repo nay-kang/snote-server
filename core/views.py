@@ -5,6 +5,8 @@ from rest_framework import status
 from core.serializers import NoteSerializer
 from rest_framework.request import Request
 from core.user_agent import parse,version_to_number
+from core.consumers import note_updated
+from datetime import datetime
 
 class NoteView(APIView):
     # permission_classes = []
@@ -19,10 +21,13 @@ class NoteView(APIView):
         data['uid'] = request.uid
         note,_ = Note.objects.update_or_create(id=pk,defaults=data)
         note.save()
+        note_updated(request.uid,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return Response(NoteSerializer(note).data)
     
     def delete(self,request,pk):
         Note.objects.filter(id=pk).delete()
+        now = datetime.now()
+        note_updated(request.uid,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return Response(status=status.HTTP_200_OK)
 
 class ClientView(APIView):

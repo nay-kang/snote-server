@@ -25,6 +25,7 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
     
     def disconnect(self, code):
         redis_db.hdel(f"user:${self.scope['uid']}",self.channel_name)
+        async_to_sync(channel_layer.group_discard)(self.scope['uid'],self.channel_name)
         return super().disconnect(code)
     
     def aeskey_code_generate_notify(self,event):
@@ -40,6 +41,11 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
         self.notify_channel('messageFromClient',{
             'from':event['from'],
             'message':event['message']
+        })
+        
+    def note_updated(self,event):
+        self.notify_channel('noteUpdated',{
+            "eventAt":event['event_at']
         })
     
     @classmethod
@@ -74,6 +80,8 @@ def auth(token,**kwargs):
     consumer = kwargs['consumer']
     consumer.scope['uid'] = uid
     redis_db.hset(f"user:${consumer.scope['uid']}",consumer.channel_name,time.time())
+    async_to_sync(channel_layer.group_add)(uid,consumer.channel_name)
+    print("group_add",uid,consumer.channel_name)
     return True
 
 @ExchangeConsumer.rpc_method(rpc_name='prepareKeyExchange')
@@ -122,3 +130,12 @@ def send_to_client(to,message,**kwargs):
         "message":message,
     })
     return True
+
+# this method should called by server
+def note_updated(uid,event_at):
+    async_to_sync(channel_layer.group_send)(
+        uid,{
+            "type":"note.updated",
+            "event_at":event_at
+        }
+    )
