@@ -29,7 +29,7 @@ def parse(ua):
     return client_type,client_version,os
 
 def version_to_number(version):
-    return version[0]*10000+version[1]*100+version[2]
+    return int(version[0])*10000+int(version[1])*100+int(version[2])
 
 def version_from_number(number):
     number_str = str(number)

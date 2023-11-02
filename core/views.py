@@ -7,13 +7,16 @@ from rest_framework.request import Request
 from core.user_agent import parse,version_to_number
 from core.consumers import note_updated
 from datetime import datetime
+import re
 
 class NoteView(APIView):
     # permission_classes = []
     
-    def get(self,request,format=None):
+    def get(self,request:Request,format=None):
         uid = request.uid
-        notes = Note.objects.filter(uid=uid).all()
+        filters = query_to_filter(request.query_params.dict()|request.data)
+        filters['uid']=uid
+        notes = Note.objects.filter(**filters).all()
         return Response(NoteSerializer(notes,many=True).data)
     
     def put(self,request,pk,format=None):
@@ -47,3 +50,22 @@ class ClientView(APIView):
             )
         client_count = Client.objects.filter(uid=request.uid).count()
         return Response({'client_count':client_count})
+    
+    
+def query_to_filter(querys:dict)->dict:
+    '''
+    https://gist.github.com/nay-kang/358e6e41858b5530a9cf
+    '''
+    filters = {}
+    for k,v in querys.items():
+        
+        if m := re.match(r'^(\[|\()(.*):(.*)(\]|\))$',v):
+            if m[2]:
+                comp = 'gt' if m[1]=='(' else 'gte'
+                filters[f'{k}__{comp}']=m[2]
+            if m[3]:
+                comp = 'lt' if m[4]=='(' else 'lte'
+                filters[f'{k}__{comp}']=m[3]
+        else:
+            filters[k]=v
+    return filters
