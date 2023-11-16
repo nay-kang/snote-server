@@ -8,6 +8,7 @@ from core.user_agent import parse,version_to_number
 from core.consumers import note_updated
 from datetime import datetime
 import re
+from asgiref.sync import async_to_sync,sync_to_async
 
 class NoteView(APIView):
     # permission_classes = []
@@ -19,18 +20,23 @@ class NoteView(APIView):
         notes = Note.objects.filter(**filters).all()
         return Response(NoteSerializer(notes,many=True).data)
     
-    def put(self,request,pk,format=None):
+    @async_to_sync
+    async def put(self,request,pk,format=None):
+        '''
+        I want return response first then send grpc
+        but after tring async function I failed.
+        '''
         data = request.data
         data['uid'] = request.uid
-        note,_ = Note.objects.update_or_create(id=pk,defaults=data)
-        note.save()
-        note_updated(request.uid,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
-        return Response(NoteSerializer(note).data)
+        note,_ = await sync_to_async(Note.objects.update_or_create)(id=pk,defaults=data)
+        await sync_to_async(note.save)()
+        await note_updated(request.uid,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
+        return await sync_to_async(Response)(NoteSerializer(note).data)
     
     def delete(self,request,pk):
         Note.objects.filter(id=pk).delete()
         now = datetime.now()
-        note_updated(request.uid,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
+        async_to_sync(note_updated)(request.uid,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return Response(status=status.HTTP_200_OK)
 
 class ClientView(APIView):

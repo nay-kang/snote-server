@@ -132,10 +132,15 @@ def send_to_client(to,message,**kwargs):
     return True
 
 # this method should called by server
-def note_updated(uid,event_at):
-    async_to_sync(channel_layer.group_send)(
-        uid,{
+async def note_updated(uid,event_at):
+    # async_to_sync(channel_layer.group_send)(
+    #     uid,{
+    #         "type":"note.updated",
+    #         "event_at":event_at
+    #     }
+    # )
+
+    await channel_layer.group_send(uid,{
             "type":"note.updated",
             "event_at":event_at
-        }
-    )
+        })
