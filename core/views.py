@@ -28,14 +28,20 @@ class NoteView(APIView):
         '''
         data = request.data
         data['uid'] = request.uid
+        data['status'] = Note.NoteStatus.NORMAL
         note,_ = await sync_to_async(Note.objects.update_or_create)(id=pk,defaults=data)
         await sync_to_async(note.save)()
         await note_updated(request.uid,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return await sync_to_async(Response)(NoteSerializer(note).data)
     
     def delete(self,request,pk):
-        Note.objects.filter(id=pk).delete()
+        # direct update status will not trigger update_at
+        # Note.objects.filter(id=pk).update(status=Note.NoteStatus.SOFT_DEL)
         now = datetime.now()
+        note = Note.objects.get(id=pk)
+        note.status=Note.NoteStatus.SOFT_DEL
+        note.save()
+        
         async_to_sync(note_updated)(request.uid,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return Response(status=status.HTTP_200_OK)
 

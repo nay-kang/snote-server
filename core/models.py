@@ -21,11 +21,18 @@ class Auth(models.Model):
 class Note(models.Model):
     class Meta:
         ordering = ['-updated_at']
+        
+    class NoteStatus(models.IntegerChoices):
+        NORMAL = 1
+        SOFT_DEL = -1
+        HARD_DEL = -2
+        
     id = models.CharField(max_length=1024,primary_key=True)
     uid = models.CharField(max_length=1024)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    status = models.IntegerField(choices=NoteStatus.choices,default=NoteStatus.NORMAL)
     
 class Client(models.Model):
     client_id = models.CharField(32,primary_key=True)
