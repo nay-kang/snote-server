@@ -1,9 +1,10 @@
-from .firebase import auth as fire_auth
+from .supabase import get_client as get_supa_client
 from core.models import Auth
 from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import HttpResponse
 import json
 from channels.security.websocket import WebsocketDenier
+from datetime import datetime
 
 # @database_sync_to_async
 def verify_token(token):
@@ -11,15 +12,16 @@ def verify_token(token):
         auth_record = Auth.objects.get(pk=token)
         return auth_record.uid
     except ObjectDoesNotExist:
-        decoded_token = fire_auth.verify_id_token(token)
-        uid = decoded_token['uid']
+        client = get_supa_client()
+        user = client.auth.get_user(token)
+        session = client.auth.set_session(token,'')
         auth_record = Auth(
             token=token,
-            uid=uid,
-            expired_at=decoded_token['exp']
+            uid=user.user.id,
+            expired_at=datetime.fromtimestamp(session.session.expires_at)
         )
         auth_record.save()
-        return uid
+        return user.user.id
     
 class AuthMiddleware:
     

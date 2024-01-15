@@ -14,6 +14,7 @@ from inspect import getfullargspec
 from django_redis import get_redis_connection
 import time
 from channels.layers import get_channel_layer
+import logging
 
 redis_db = get_redis_connection('redis_db')
 channel_layer = get_channel_layer()
@@ -24,8 +25,11 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
         self.accept()
     
     def disconnect(self, code):
-        redis_db.hdel(f"user:${self.scope['uid']}",self.channel_name)
-        async_to_sync(channel_layer.group_discard)(self.scope['uid'],self.channel_name)
+        try:
+            redis_db.hdel(f"user:${self.scope['uid']}",self.channel_name)
+            async_to_sync(channel_layer.group_discard)(self.scope['uid'],self.channel_name)
+        except KeyError:
+            logging.warning('user id:%s not found when discount rpc consumer' % self.scope['uid'])
         return super().disconnect(code)
     
     def aeskey_code_generate_notify(self,event):

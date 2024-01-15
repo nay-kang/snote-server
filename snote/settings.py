@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+1n&_rre5n^df%803e5ub9zap=hpd!uuvv5!khctuw@$lhc62+'
+SECRET_KEY = os.getenv('DJ_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -181,4 +181,9 @@ CACHES = {
             "CLIENT_CLASS":"django_redis.client.DefaultClient"
         }
     }
+}
+
+SUPABASE = {
+    'url':os.getenv('SUPABASE_URL'),
+    'key':os.getenv('SUPABASE_KEY')
 }
