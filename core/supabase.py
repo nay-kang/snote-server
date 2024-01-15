@@ -5,6 +5,6 @@ client:Client = None
 def get_client():
     global client
     if(client is None):
-        client = create_client(settings.SUPABASE['url'],settings.SUPBASE['key'])
+        client = create_client(settings.SUPABASE['url'],settings.SUPABASE['key'])
         
     return client
