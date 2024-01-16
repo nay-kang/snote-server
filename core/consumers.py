@@ -29,7 +29,7 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
             redis_db.hdel(f"user:${self.scope['uid']}",self.channel_name)
             async_to_sync(channel_layer.group_discard)(self.scope['uid'],self.channel_name)
         except KeyError:
-            logging.warning('user id:%s not found when discount rpc consumer' % self.scope['uid'])
+            logging.warning('user id not found in scope when discount rpc consumer')
         return super().disconnect(code)
     
     def aeskey_code_generate_notify(self,event):
