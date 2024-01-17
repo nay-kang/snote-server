@@ -9,9 +9,27 @@ from core.consumers import note_updated
 from datetime import datetime
 import re
 from asgiref.sync import async_to_sync,sync_to_async
+import gzip
+from rest_framework.parsers import JSONParser
+class GZipParser(JSONParser):
+    media_type = '*/*'
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        request:Request = parser_context['request']
+        if request.headers.get('Content-Encoding')=='gzip':
+            gzip_file = gzip.GzipFile(fileobj=stream)
+            stream = gzip_file
+        try:
+            return super().parse(stream,media_type,parser_context)
+        except Exception as err:
+            print(err)
+        
+        
 
 class NoteView(APIView):
     # permission_classes = []
+    parser_classes = [GZipParser]
+    
     
     def get(self,request:Request,format=None):
         uid = request.uid
