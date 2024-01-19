@@ -1,27 +1,29 @@
 from .supabase import get_client as get_supa_client
 from core.models import Auth
-from django.core.exceptions import ObjectDoesNotExist
 from django.http.response import HttpResponse
 import json
 from channels.security.websocket import WebsocketDenier
 from datetime import datetime
+from django_redis import get_redis_connection
+from pottery import Redlock
 
 # @database_sync_to_async
 def verify_token(token):
-    try:
-        auth_record = Auth.objects.get(pk=token)
+    redis_client = get_redis_connection()
+    lock = Redlock(key=token,masters={redis_client})
+    with lock:
+        auth_record = Auth.objects.filter(token=token).first()
+        if not auth_record:
+            client = get_supa_client()
+            session = client.auth.set_session(token,'')
+            auth_record = Auth(
+                token=token,
+                uid=session.user.id,
+                expired_at=datetime.fromtimestamp(session.session.expires_at)
+            )
+            auth_record.save()
+            return session.user.id
         return auth_record.uid
-    except ObjectDoesNotExist:
-        client = get_supa_client()
-        user = client.auth.get_user(token)
-        session = client.auth.set_session(token,'')
-        auth_record = Auth(
-            token=token,
-            uid=user.user.id,
-            expired_at=datetime.fromtimestamp(session.session.expires_at)
-        )
-        auth_record.save()
-        return user.user.id
     
 class AuthMiddleware:
     

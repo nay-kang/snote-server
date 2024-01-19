@@ -15,6 +15,7 @@ django-channels2-jsonrpc = "*"
 django-redis = "*"
 ua-parser = "*"
 supabase = "*"
+pottery = "*"
 
 [dev-packages]
 
