@@ -9,13 +9,15 @@ from pottery import Redlock
 
 # @database_sync_to_async
 def verify_token(token):
+    access_token = token[:-22]
+    refresh_token = token[-22:]
     redis_client = get_redis_connection()
     lock = Redlock(key=token,masters={redis_client})
     with lock:
-        auth_record = Auth.objects.filter(token=token).first()
+        auth_record = Auth.objects.filter(token=access_token).first()
         if not auth_record:
             client = get_supa_client()
-            session = client.auth.set_session(token,'')
+            session = client.auth.set_session(access_token,refresh_token)
             auth_record = Auth(
                 token=token,
                 uid=session.user.id,
