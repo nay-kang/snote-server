@@ -14,17 +14,21 @@ def verify_token(token):
     redis_client = get_redis_connection()
     lock = Redlock(key=token,masters={redis_client})
     with lock:
-        auth_record = Auth.objects.filter(token=access_token).first()
-        if not auth_record:
-            client = get_supa_client()
-            session = client.auth.set_session(access_token,refresh_token)
-            auth_record = Auth(
-                token=token,
-                uid=session.user.id,
-                expired_at=datetime.fromtimestamp(session.session.expires_at)
-            )
-            auth_record.save()
-            return session.user.id
+        try:
+            auth_record = Auth.objects.filter(token=access_token).first()
+            if not auth_record:
+                client = get_supa_client()
+                session = client.auth.set_session(access_token,'')
+                auth_record = Auth(
+                    token=token,
+                    uid=session.user.id,
+                    expired_at=datetime.fromtimestamp(session.session.expires_at)
+                )
+                auth_record.save()
+                return session.user.id
+        except Exception as err:
+            print(err)
+            return None
         return auth_record.uid
     
 class AuthMiddleware:
