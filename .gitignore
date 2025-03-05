@@ -4,3 +4,5 @@
 .env
 firebase_account.json
 Pipfile.lock
+
+**/__pycache__/

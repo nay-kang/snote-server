@@ -1,7 +1,6 @@
 from ua_parser import user_agent_parser
 from ua_parser.user_agent_parser import (
     USER_AGENT_PARSERS,
-    OS_PARSERS,
     DEVICE_PARSERS,
     UserAgentParser,
     DeviceParser
@@ -10,7 +9,7 @@ from ua_parser.user_agent_parser import (
 
 # Snote/0.0.1 iOS/16.4.1 (device)
 
-USER_AGENT_PARSERS.insert(0,UserAgentParser(r"^((?i)snote)\/(\d+)\.(\d+).(\d+)",'app'))
+USER_AGENT_PARSERS.insert(0,UserAgentParser(r"(?i)^(snote)\/(\d+)\.(\d+).(\d+)",'app'))
 DEVICE_PARSERS.insert(0,DeviceParser(r"snote.*\((.*)\)$"))
 
 def parse(ua):
