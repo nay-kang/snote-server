@@ -1,5 +1,20 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import AbstractBaseUser,BaseUserManager
+import uuid
+
+class SimpleUserManager(BaseUserManager):
+    def create_user(self,email,**extra_fields):
+        if not email:
+            raise ValueError("Emails is required")
+        email = self.normalize_email(email)
+        user = self.model(email=email,**extra_fields)
+        user.set_unusable_password()
+        user.save(using=self._db)
+        return user
+    
+    def create_superuser(self,email,**extra_fields):
+        return self.create_user(email,**extra_fields)
 
 class UnixDateTImeField(models.DateTimeField):
     def pre_save(self, model_instance, add: bool) -> any:
@@ -8,15 +23,15 @@ class UnixDateTImeField(models.DateTimeField):
             value = timezone.make_aware(timezone.datetime.fromtimestamp(value))
         return value
 
-class User(models.Model):
-    uid = models.CharField(max_length=1024,primary_key=True)
-    email = models.CharField(max_length=100)
+class User(AbstractBaseUser):
+    id = models.CharField(max_length=1024,primary_key=True,default=uuid.uuid4,editable=False)
+    email = models.CharField(max_length=128,unique=True)
     created_at = models.DateTimeField(auto_now_add=True,auto_now=False)
+        
+    objects = SimpleUserManager()
     
-class Auth(models.Model):
-    token = models.CharField(max_length=10240,primary_key=True)
-    uid = models.CharField(max_length=1024)
-    expired_at = UnixDateTImeField(auto_now=False,auto_now_add=False)
+    USERNAME_FIELD = "email"
+    
     
 class Note(models.Model):
     class Meta:
@@ -27,7 +42,7 @@ class Note(models.Model):
         SOFT_DEL = -1
         HARD_DEL = -2
         
-    id = models.CharField(max_length=1024,primary_key=True)
+    id = models.CharField(max_length=1024,primary_key=True,default=uuid.uuid4,editable=False)
     uid = models.CharField(max_length=1024)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,9 +50,9 @@ class Note(models.Model):
     status = models.IntegerField(choices=NoteStatus.choices,default=NoteStatus.NORMAL)
     
 class Client(models.Model):
-    client_id = models.CharField(32,primary_key=True)
+    client_id = models.CharField(max_length=64,primary_key=True)
     uid = models.CharField(max_length=1024)
     client_type = models.CharField(max_length=32) # only web,app
     client_version = models.IntegerField() # eg 0.0.1 is 000001, web version always 000000
-    os = models.CharField(32)
+    os = models.CharField(max_length=32)
     created_at = models.DateTimeField(auto_now_add=True)

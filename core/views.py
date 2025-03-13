@@ -11,6 +11,18 @@ import re
 from asgiref.sync import async_to_sync,sync_to_async
 import gzip
 from rest_framework.parsers import JSONParser
+import secrets
+from .serializers import EmailOTPSerializer
+from django.core.mail import send_mail
+from django.core.cache import cache
+import time
+from .auth_backend import otp_cache_key
+from rest_framework.permissions import IsAuthenticated
+import logging
+
+def generate_verification_code():
+    return ''.join([str(secrets.randbelow(10)) for _ in range(6)])
+
 class GZipParser(JSONParser):
     media_type = '*/*'
 
@@ -22,17 +34,16 @@ class GZipParser(JSONParser):
         try:
             return super().parse(stream,media_type,parser_context)
         except Exception as err:
-            print(err)
-        
+            logging.error(err)
         
 
 class NoteView(APIView):
-    # permission_classes = []
+    permission_classes = [IsAuthenticated]
     parser_classes = [GZipParser]
     
     
     def get(self,request:Request,format=None):
-        uid = request.uid
+        uid = request.user.id
         filters = query_to_filter(request.query_params.dict()|request.data)
         filters['uid']=uid
         notes = Note.objects.filter(**filters).all()
@@ -45,11 +56,11 @@ class NoteView(APIView):
         but after tring async function I failed.
         '''
         data = request.data
-        data['uid'] = request.uid
+        data['uid'] = request.user.id
         data['status'] = Note.NoteStatus.NORMAL
         note,_ = await sync_to_async(Note.objects.update_or_create)(id=pk,defaults=data)
         await sync_to_async(note.save)()
-        await note_updated(request.uid,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
+        await note_updated(request.user.id,note.updated_at.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return await sync_to_async(Response)(NoteSerializer(note).data)
     
     def delete(self,request,pk):
@@ -60,10 +71,11 @@ class NoteView(APIView):
         note.status=Note.NoteStatus.SOFT_DEL
         note.save()
         
-        async_to_sync(note_updated)(request.uid,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
+        async_to_sync(note_updated)(request.user.id,now.strftime ("%Y-%m-%dT%H:%M:%S.%fZ"))
         return Response(status=status.HTTP_200_OK)
 
 class ClientView(APIView):
+    permission_classes = [IsAuthenticated]
     
     def put(self,request:Request,pk,format=None):
         client_type,client_version,os = parse(request.headers['user-agent'])
@@ -71,17 +83,34 @@ class ClientView(APIView):
         
         Client.objects.get_or_create(
             defaults={
-                "uid":request.uid,
+                "uid":request.user.id,
                 "client_type":client_type,
                 "client_version":client_version_num,
                 "os":os
             },
             client_id=pk,
             )
-        client_count = Client.objects.filter(uid=request.uid).count()
+        client_count = Client.objects.filter(uid=request.user.id).count()
         return Response({'client_count':client_count})
     
+class EmailOTPView(APIView):
+    permission_classes = []
     
+    def post(self,request):
+        serializer = EmailOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        code = generate_verification_code()
+        cache_key = otp_cache_key(email)
+        cached_code = cache.get(cache_key)
+        #do not allow user resend code in 60 seconds
+        if cached_code and time.time()-cached_code['ts']<60:
+            return Response({"code":"prevent_resend_code_intime"},status=status.HTTP_403_FORBIDDEN)
+        send_mail('SNote login code',f'Your code is {code}','notify@codeedu.net',[email],fail_silently=False)
+        cache.set(cache_key,{"code":code,"ts":time.time()},60*5)
+        return Response(status=status.HTTP_200_OK)
+
+
 def query_to_filter(querys:dict)->dict:
     '''
     https://gist.github.com/nay-kang/358e6e41858b5530a9cf

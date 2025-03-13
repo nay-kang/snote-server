@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -38,11 +39,12 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     # 'django.contrib.admin',
-    # 'django.contrib.auth',
-    # 'django.contrib.contenttypes',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
     # 'django.contrib.sessions',
     # 'django.contrib.messages',
     # 'django.contrib.staticfiles',
+    'rest_framework_simplejwt.token_blacklist',
     'daphne',
     'corsheaders',
     'core',
@@ -58,13 +60,14 @@ MIDDLEWARE = [
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
-    'core.auth_middleware.AuthMiddleware'
 ]
 
 REST_FRAMEWORK = {
-    # 'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
     # 'DEFAULT_PERMISSION_CLASSES':[],
-    'UNAUTHENTICATED_USER':None
+    'UNAUTHENTICATED_USER':None,
 }
 
 CORS_ALLOW_ALL_ORIGINS=True
@@ -83,22 +86,6 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 
 ROOT_URLCONF = 'snote.urls'
 
-# TEMPLATES = [
-#     {
-#         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-#         'DIRS': [],
-#         'APP_DIRS': True,
-#         'OPTIONS': {
-#             'context_processors': [
-#                 'django.template.context_processors.debug',
-#                 'django.template.context_processors.request',
-#                 'django.contrib.auth.context_processors.auth',
-#                 'django.contrib.messages.context_processors.messages',
-#             ],
-#         },
-#     },
-# ]
-
 WSGI_APPLICATION = 'snote.wsgi.application'
 
 
@@ -115,25 +102,6 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT'),
     }
 }
-
-
-# Password validation
-# https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
-
-# AUTH_PASSWORD_VALIDATORS = [
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-#     },
-#     {
-#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-#     },
-# ]
 
 
 # Internationalization
@@ -158,12 +126,16 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REDIS_CHANNEL_DB = 1
+REDIS_CACHE_DB = 0
+REDIS_STORAGE_DB = 2
+
 ASGI_APPLICATION = "snote.asgi.application"
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [f"redis://{os.getenv('REDIS_HOST')}:6379/1"],
+            "hosts": [f"redis://{os.getenv('REDIS_HOST')}:6379/{REDIS_CHANNEL_DB}"],
         },
     },
 }
@@ -171,21 +143,46 @@ CHANNEL_LAYERS = {
 CACHES = {
     "default": {
         "BACKEND":"django_redis.cache.RedisCache",
-        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/0",
+        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/{REDIS_CACHE_DB}",
         "OPTIONS":{
             "CLIENT_CLASS":"django_redis.client.DefaultClient"
         }
     },
     "redis_db": {
         "BACKEND":"django_redis.cache.RedisCache",
-        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/2",
+        "LOCATION":f"redis://{os.getenv('REDIS_HOST')}:6379/{REDIS_STORAGE_DB}",
         "OPTIONS":{
             "CLIENT_CLASS":"django_redis.client.DefaultClient"
         }
     }
 }
 
-SUPABASE = {
-    'url':os.getenv('SUPABASE_URL'),
-    'key':os.getenv('SUPABASE_KEY')
+AUTH_USER_MODEL = "core.User"
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=2),  # Longer access token for better UX
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),  # 30 days refresh token
+    "ROTATE_REFRESH_TOKENS": True,  # Enable rotation for security
+    "BLACKLIST_AFTER_ROTATION": False,  # No need for blacklist if we trust refresh tokens
+    # "UPDATE_LAST_LOGIN": True,  # Track last login
+    "TOKEN_OBTAIN_SERIALIZER": "core.serializers.SnoteTokenObtainPairSerializer",
+    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
+    "SLIDING_TOKEN_LIFETIME": timedelta(hours=1),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=30),
 }
+AUTHENTICATION_BACKENDS = [
+    'core.auth_backend.OTPBackend',
+]
+
+def get_bool_env(key: str, default: bool = False) -> bool:
+    """Convert environment string variable to bool."""
+    value = os.getenv(key, str(default)).lower()
+    return value in ('true', '1', 'yes', 'y', 'on')
+
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = os.getenv('EMAIL_PORT')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_USE_TLS = get_bool_env('EMAIL_USE_TLS', False)
+EMAIL_USE_SSL = get_bool_env('EMAIL_USE_SSL', False)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

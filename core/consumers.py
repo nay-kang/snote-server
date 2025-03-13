@@ -9,7 +9,7 @@ I need a timer to make sure the client not hanged by not getting the verify resu
 import functools
 from channels_jsonrpc import JsonRpcWebsocketConsumer
 from asgiref.sync import async_to_sync
-from core.auth_middleware import verify_token
+from rest_framework_simplejwt.tokens import UntypedToken, TokenError
 from inspect import getfullargspec
 from django_redis import get_redis_connection
 import time
@@ -26,10 +26,12 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
     
     def disconnect(self, code):
         try:
-            redis_db.hdel(f"user:${self.scope['uid']}",self.channel_name)
-            async_to_sync(channel_layer.group_discard)(self.scope['uid'],self.channel_name)
+            redis_db.hdel(f"user:{self.scope['uid']}", self.channel_name)
+            async_to_sync(channel_layer.group_discard)(str(self.scope['uid']), self.channel_name)
         except KeyError:
-            logging.warning('user id not found in scope when discount rpc consumer')
+            logging.warning('user id not found in scope when disconnect rpc consumer')
+        except Exception as e:
+            logging.error(f'Error during disconnect: {str(e)}')
         return super().disconnect(code)
     
     def aeskey_code_generate_notify(self,event):
@@ -61,7 +63,7 @@ class ExchangeConsumer(JsonRpcWebsocketConsumer):
                 consumer = kwargs['consumer']
                 if not consumer.scope.get('uid'):
                     raise Exception('unauthorized')
-                redis_db.hset(f"user:${consumer.scope['uid']}",consumer.channel_name,time.time())
+                redis_db.hset(f"user:{consumer.scope['uid']}",consumer.channel_name,time.time())
                 func_args = getattr(getfullargspec(func), 'varkw')
                 if func_args and "kwargs" in func_args:
                     result = func(*args,**kwargs)
@@ -80,21 +82,24 @@ def ping():
 
 @ExchangeConsumer.rpc_method()
 def auth(token,**kwargs):
-    uid = verify_token(token)
+    try:
+        tokenObj = UntypedToken(token)
+        uid = tokenObj['user_id']
+    except TokenError:
+        return False
     consumer = kwargs['consumer']
     consumer.scope['uid'] = uid
-    redis_db.hset(f"user:${consumer.scope['uid']}",consumer.channel_name,time.time())
+    redis_db.hset(f"user:{consumer.scope['uid']}",consumer.channel_name,time.time())
     async_to_sync(channel_layer.group_add)(uid,consumer.channel_name)
-    print("group_add",uid,consumer.channel_name)
     return True
-
+    
 @ExchangeConsumer.rpc_method(rpc_name='prepareKeyExchange')
 @ExchangeConsumer.check_auth()
 def prepare_key_exchange(**kwargs):
     consumer = kwargs['consumer']
     uid = consumer.scope['uid']
     self_channel_name = consumer.channel_name
-    clients = redis_db.hgetall(f"user:${uid}")
+    clients = redis_db.hgetall(f"user:{uid}")
     for channel_name in clients:
         channel_name = channel_name.decode()
         if channel_name==self_channel_name:
@@ -104,14 +109,14 @@ def prepare_key_exchange(**kwargs):
             "text":""
         })
     return True
-
+    
 @ExchangeConsumer.rpc_method(rpc_name='verifyAesExchangeCode')
 @ExchangeConsumer.check_auth()
 def verify_aes_exchange_code(code,**kwargs):
     consumer = kwargs['consumer']
     uid = consumer.scope['uid']
     self_channel_name = consumer.channel_name
-    clients = redis_db.hgetall(f"user:${uid}")
+    clients = redis_db.hgetall(f"user:{uid}")
     for channel_name in clients:
         channel_name = channel_name.decode()
         if channel_name==self_channel_name:

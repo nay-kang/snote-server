@@ -14,8 +14,9 @@ channels-redis = "*"
 django-channels2-jsonrpc = "*"
 django-redis = "~=5.0"
 ua-parser = "*"
-supabase = "~=2.0"
 pottery = "*"
+djangorestframework-simplejwt = "*"
+six = "*"
 
 [dev-packages]
 
