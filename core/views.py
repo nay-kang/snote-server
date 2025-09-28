@@ -86,7 +86,8 @@ class ClientView(APIView):
                 "uid":request.user.id,
                 "client_type":client_type,
                 "client_version":client_version_num,
-                "os":os
+                "os":os,
+                "updated_at":datetime.now(),
             },
             client_id=pk,
             )

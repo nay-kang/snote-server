@@ -56,3 +56,4 @@ class Client(models.Model):
     client_version = models.IntegerField() # eg 0.0.1 is 000001, web version always 000000
     os = models.CharField(max_length=32)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

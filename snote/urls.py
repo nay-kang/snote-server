@@ -13,8 +13,11 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.http import HttpResponse
 from django.urls import path,include
 
 urlpatterns = [
     path('api/',include('core.urls')),
+    # this for debug only.live env will using nginx to do health check
+    path('ping',lambda request: HttpResponse("pong"))
 ]

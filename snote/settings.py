@@ -159,6 +159,8 @@ CACHES = {
 
 AUTH_USER_MODEL = "core.User"
 
+JWT_TOKEN_EXPIRATION_HOURS = eval(os.getenv('JWT_TOKEN_EXPIRATION_HOURS',"6"))
+JWT_REFRESH_EXPIRATION_HOURS = eval(os.getenv('JWT_REFRESH_EXPIRATION_HOURS',"24*30"))
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=2),  # Longer access token for better UX
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),  # 30 days refresh token
@@ -167,8 +169,8 @@ SIMPLE_JWT = {
     # "UPDATE_LAST_LOGIN": True,  # Track last login
     "TOKEN_OBTAIN_SERIALIZER": "core.serializers.SnoteTokenObtainPairSerializer",
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": timedelta(hours=1),
-    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=30),
+    "SLIDING_TOKEN_LIFETIME": timedelta(hours=JWT_TOKEN_EXPIRATION_HOURS),
+    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(hours=JWT_REFRESH_EXPIRATION_HOURS),
 }
 AUTHENTICATION_BACKENDS = [
     'core.auth_backend.OTPBackend',
@@ -186,3 +188,5 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = get_bool_env('EMAIL_USE_TLS', False)
 EMAIL_USE_SSL = get_bool_env('EMAIL_USE_SSL', False)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+SOFT_DELETE_EXPIRY_DAYS = int(os.getenv('SOFT_DELETE_EXPIRY_DAYS', '30'))
